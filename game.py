@@ -32,7 +32,7 @@ class Pathfinder:
         finder = AStarFinder(diagonal_movement=DiagonalMovement)
         self.path, _ = finder.find_path(start, end, self.grid)
         self.grid.cleanup()
-        print(self.path)
+        self.roomba.sprite.set_path(self.path)
 
     def draw_path(self):
         if self.path:
@@ -67,7 +67,49 @@ class Roomba(pygame.sprite.Sprite):
         col = self.rect.centerx // 32
         row = self.rect.centery // 32
         return (col, row)
+    def set_path(self, path):
+        self.path = path
+        self.create_collision_rects()
+        self.get_direction()
+    def create_collision_rects(self):
+        if not self.path:
+            return  # Exit early if there's no path
 
+        self.collision_rects = []
+        for point in self.path:
+            if isinstance(point, tuple):  # Handle tuples
+                x = (point[0] * 32) + 16
+                y = (point[1] * 32) + 16
+            elif hasattr(point, 'x') and hasattr(point, 'y'):  # Handle GridNode or similar objects
+                x = (point.x * 32) + 16
+                y = (point.y * 32) + 16
+            else:
+                raise TypeError(f"Unsupported path point type: {type(point)}")
+
+            rect = pygame.Rect(x - 2, y - 2, 4, 4)  # Creates a 4x4 rect centered on (x, y)
+            self.collision_rects.append(rect)
+
+    # def check_collisions(self):
+	# 	if self.collision_rects:
+	# 		for rect in self.collision_rects:
+	# 			if rect.collidepoint(self.pos):
+	# 				del self.collision_rects[0]
+	# 				self.get_direction()
+	# 	else:
+			# self.empty_path()
+    def get_direction(self):
+        if self.collision_rects:
+            start = pygame.math.Vector2(self.pos)
+            end = pygame.math.Vector2(self.collision_rects[0].center)
+            self.direction = (end -start).normalize()
+        else:
+            self.direction = pygame.math.Vector2(0,0)
+            self.path = []
+
+    def update(self):
+        self.pos += self.direction * self.speed
+       # self.check_collisions()
+        self.rect.center = self.pos
 
 
 pygame.init()
